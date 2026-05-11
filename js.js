@@ -1,3 +1,7 @@
+var t1="¡Volvé!",t2="No te lo pierdas...",i=0;document.addEventListener("visibilitychange",function(){if(document.hidden){i=0;window.int=setInterval(function(){document.title=i++%2?t2:t1},1000)}else{clearInterval(window.int);document.title="Tienda Online de Magi"}});
+let b=document.querySelector(".row-fluid"),t=b.querySelector(".font-small"),x=b.offsetWidth,s=window.innerWidth<=600?1.4:1,p=1/s,l=performance.now();t.innerHTML=Array(8).join(t.innerHTML.replace(/_/g,Array(12).join("&nbsp;")));b.style.cssText="position:relative;overflow:hidden;height:30px";t.style.cssText="position:absolute;white-space:nowrap;top:50%;transform:translateY(-50%);left:100%";(function m(n){x-=p*((n-l)/16.67);l=n;t.style.left=x+"px";if(x<-t.scrollWidth)x=b.offsetWidth;requestAnimationFrame(m)})(l);
+
+
 (function() {
     window.originalFetch = window.originalFetch || window.fetch;
 
