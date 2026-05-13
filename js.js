@@ -266,32 +266,58 @@ var responseHandlers = {
 
         var buildHtmlProducto = function(itemDomicilio, itemSucursal, itemMagi) {
             var lineas = [];
-
+        
             if (itemDomicilio) {
-                var fechaRaw     = getFechaDesdeDataName(itemDomicilio);
+                var input    = itemDomicilio.querySelector('input');
+                var costRaw  = (input.getAttribute('data-cost') || "").trim();
+                var esGratis = costRaw.toLowerCase().indexOf('gratis') !== -1;
+                var costo    = formatCosto(costRaw);
+                var fechaRaw = getFechaDesdeDataName(itemDomicilio);
+                var fechaNorm = normalizarFecha(fechaRaw).replace(/^(llega|retiras|retirás)\s+/i, '');
+                var textoDom = esGratis
+                    ? 'Llega <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNorm
+                    : 'Llega ' + fechaNorm + ' por ' + costo;
+        
                 var efectivoDiff = calcularEfectivoDiff(fechaRaw);
-                if (efectivoDiff <= 1) {
-                    var labelFecha = efectivoDiff <= 0 ? 'hoy' : 'mañana';
-                    lineas.push(buildLineaProducto(SVG_RAYO, '<b>Llega ' + labelFecha + '</b> en AMBA'));
-                } else {
-                    lineas.push(buildLineaProducto(SVG_CAMION, 'Envío a todo el país'));
-                }
+                var svgDom = efectivoDiff <= 1 ? SVG_RAYO : SVG_CAMION;
+                lineas.push(buildLineaProducto(svgDom, textoDom));
             }
-
+        
             if (itemSucursal) {
-                lineas.push(buildLineaProducto(SVG_CAMION, 'Envío a todo el país'));
+                var inputS    = itemSucursal.querySelector('input');
+                var costRawS  = (inputS.getAttribute('data-cost') || "").trim();
+                var esGratisS = costRawS.toLowerCase().indexOf('gratis') !== -1;
+                var costoS    = formatCosto(costRawS);
+                var fechaRawS  = getFechaDesdeDataName(itemSucursal);
+                var fechaNormS = normalizarFecha(fechaRawS).replace(/^(retiras|retirás)\s+/i, '');
+                var aTag       = itemSucursal.querySelector('a[data-toggle="modal"]');
+                var modalHref  = aTag ? aTag.getAttribute('href') : '#';
+                var linkSuc    = '<a href="' + modalHref + '" data-toggle="modal" '
+                               + 'class="js-trigger-modal-zindex-top btn-link btn-block" '
+                               + 'style="text-transform:none;color:#2e7d32;">sucursal cercana</a>';
+                var textoSuc = esGratisS
+                    ? 'Retirás <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNormS + ' en ' + linkSuc
+                    : 'Retirás ' + fechaNormS + ' por ' + costoS + ' en ' + linkSuc;
+                lineas.push(buildLineaProducto(SVG_CAMION, textoSuc));
             }
-
+        
             if (itemMagi) {
-                lineas.push(buildLineaProducto(SVG_TIENDA, '<b>Retiro gratis</b> en Tienda'));
+                var inputM      = itemMagi.querySelector('input');
+                var dataName    = inputM.getAttribute('data-name') || "";
+                var barrioMatch = dataName.match(/Magi - ([^-]+?)\s*\(CABA\)/i);
+                var barrio      = barrioMatch ? barrioMatch[1].trim() : 'nuestra oficina';
+                var textoMagi   = 'Retirá <span style="color:#2ea44f;font-weight:bold;">gratis</span> en '
+                                + barrio + ' (lunes a viernes 9-18hs)';
+                lineas.push(buildLineaProducto(SVG_TIENDA, textoMagi));
             }
-
+        
             return '<div style="font-family:Arial,sans-serif;max-width:320px;padding:8px 0;">'
                  + '<div style="display:flex;flex-direction:column;gap:5px;">'
                  + lineas.join('')
                  + '</div></div>';
         };
 
+        
         // ─── Lógica principal ──────────────────────────────────────────────
 
         var cp       = getCep(options);
