@@ -81,6 +81,20 @@ var responseHandlers = {
             return parts.length > 1 ? parts[parts.length - 1].trim() : "";
         };
 
+        var calcularEfectivoDiff = function(textoFecha) {
+            var match = textoFecha.match(/(\d{1,2})\/(\d{2})/);
+            if (!match) return Infinity;
+            var ahora       = new Date();
+            var hora        = ahora.getHours();
+            var diaSem      = ahora.getDay();
+            var esHabil     = diaSem >= 1 && diaSem <= 5;
+            var superaCorte = esHabil && hora >= 13;
+            var hoy         = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+            var d           = new Date(ahora.getFullYear(), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
+            var diff        = Math.round((d - hoy) / 86400000);
+            return superaCorte ? diff - 1 : diff;
+        };
+
         var normalizarFecha = function(textoFecha) {
             var reDate = /(\d{1,2})\/(\d{2})/g;
             var fechas = [];
@@ -134,9 +148,11 @@ var responseHandlers = {
             return textoFecha;
         };
 
+        // ─── Renderer formato ESTÁNDAR ─────────────────────────────────────
+
         var buildLiWrapper = function(item, isChecked, innerHtml) {
-            var input     = item.querySelector('input');
-            var label     = item.querySelector('label');
+            var input      = item.querySelector('input');
+            var label      = item.querySelector('label');
             var inputClone = input.cloneNode(true);
             if (isChecked) {
                 inputClone.setAttribute('checked', 'checked');
@@ -188,21 +204,22 @@ var responseHandlers = {
             else if (tipo === 'pickup-sucursal') {
                 var fechaRaw2  = getFechaDesdeDataName(item);
                 var fechaNorm2 = normalizarFecha(fechaRaw2).replace(/^(retiras|retirás)\s+/i, '');
+                var modalDiv   = item.querySelector('.js-shipping-suboption');
+                var modalHtml  = modalDiv ? modalDiv.outerHTML : '';
+                modalHtml = modalHtml
+                    .replace(
+                        /(<span[^>]*>)[\s\n]*Ver direcciones[\s\n]*(<\/span>)/,
+                        '$1sucursal cercana$2'
+                    )
+                    .replace(
+                        /class="(js-trigger-modal-zindex-top[^"]*)">/,
+                        'class="$1" style="text-transform:none;">'
+                    );
                 if (esGratis) {
                     textoPromesa = 'Retirás <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNorm2;
                 } else {
                     textoPromesa = 'Retirás ' + fechaNorm2 + ' por ' + costo;
                 }
-                // Preservar bloque modal original, reemplazando "Ver direcciones" por "sucursal cercana"
-                var modalDiv  = item.querySelector('.js-shipping-suboption');
-                var modalHtml = modalDiv ? modalDiv.outerHTML : '';
-                modalHtml = modalHtml.replace(
-                    /(<span[^>]*>)[\s\n]*Ver direcciones[\s\n]*(<\/span>)/,
-                    '$1sucursal cercana$2'
-                ).replace(
-                    /class="(js-trigger-modal-zindex-top[^"]*)">/,
-                    'class="$1" style="text-transform:none;">'
-                );
                 innerHtml = '<div class="shipping-method-name m-bottom-quarter" data-component="option.name">'
                           + textoPromesa + '</div>'
                           + modalHtml;
@@ -221,10 +238,66 @@ var responseHandlers = {
             return buildLiWrapper(item, isChecked, innerHtml);
         };
 
-        // --- Lógica principal ---
+        // ─── Renderer formato PRODUCTO (/productos/) ───────────────────────
+
+        var SVG_RAYO = '<svg width="17" height="17" viewBox="25 5 55 88" fill="none" style="color:#2e7d32;">'
+                     + '<path d="M65 10L30 55H50L35 90L75 40H55L65 10Z" stroke="currentColor" stroke-width="5" '
+                     + 'stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+
+        var SVG_CAMION = '<svg width="20" height="16" viewBox="0 0 640 512" style="color:#2e7d32;">'
+                       + '<path d="M615.11,238.15l-51.78-77.69a50.61,50.61,0,0,0-42.11-22.53H454.94V87.33a50.61,50.61,0,0,0-50.6-50.61H67a50.6,50.6,0,0,0-50.6,50.61V357.2A50.6,50.6,0,0,0,67,407.81H85.55a84.35,84.35,0,0,0,165.29,0H355.43a84.35,84.35,0,0,0,165.29,0H573a50.6,50.6,0,0,0,50.6-50.61v-91A50.58,50.58,0,0,0,615.11,238.15ZM454.94,171.66h66.28a16.85,16.85,0,0,1,14,7.51l40,60H454.94ZM168.19,441.54a50.6,50.6,0,1,1,50.61-50.6A50.61,50.61,0,0,1,168.19,441.54Zm187.24-67.47H250.84a84.35,84.35,0,0,0-165.29,0H67A16.87,16.87,0,0,1,50.12,357.2V87.33A16.87,16.87,0,0,1,67,70.46H404.34A16.86,16.86,0,0,1,421.2,87.33v221A84.43,84.43,0,0,0,355.43,374.07Zm82.64,67.47a50.6,50.6,0,1,1,50.6-50.6A50.61,50.61,0,0,1,438.07,441.54ZM589.88,357.2A16.87,16.87,0,0,1,573,374.07H520.72a84.45,84.45,0,0,0-65.78-65.78V272.87H589.88Z" fill="currentColor"/></svg>';
+
+        var SVG_TIENDA = '<svg width="18" height="16" viewBox="0 0 640 512" fill="#2e7d32">'
+                       + '<path d="M635.7 176.1l-91.4-160C538.6 6.2 528 0 516.5 0h-393C112 0 101.4 6.2 95.7 16.1l-91.4 160'
+                       + 'C-7.9 197.5 7.4 224 32 224h32v254.5C64 497 78.3 512 96 512h256c17.7 0 32-15 32-33.5V224h160v280'
+                       + 'c0 4.4 3.6 8 8 8h16c4.4 0 8-3.6 8-8V224h32c24.6 0 39.9-26.5 27.7-47.9z'
+                       + 'M352 478.5c0 .9-.3 1.4-.2 1.5l-255.2.2s-.6-.5-.6-1.7V352h256v126.5zm0-158.5H96v-96h256v96z'
+                       + 'M32.1 192l91.4-160h393L608 192H32.1z"/></svg>';
+
+        var buildLineaProducto = function(svg, texto) {
+            return '<span style="display:grid;grid-template-columns:20px 1fr;align-items:center;'
+                 + 'gap:6px;font-size:13.5px;color:#2e7d32;line-height:1.2;">'
+                 + '<span style="display:flex;align-items:center;justify-content:flex-start;width:20px;">'
+                 + svg
+                 + '</span>'
+                 + '<span>' + texto + '</span>'
+                 + '</span>';
+        };
+
+        var buildHtmlProducto = function(itemDomicilio, itemSucursal, itemMagi) {
+            var lineas = [];
+
+            if (itemDomicilio) {
+                var fechaRaw     = getFechaDesdeDataName(itemDomicilio);
+                var efectivoDiff = calcularEfectivoDiff(fechaRaw);
+                if (efectivoDiff <= 1) {
+                    var labelFecha = efectivoDiff <= 0 ? 'hoy' : 'mañana';
+                    lineas.push(buildLineaProducto(SVG_RAYO, '<b>Llega ' + labelFecha + '</b> en AMBA'));
+                } else {
+                    lineas.push(buildLineaProducto(SVG_CAMION, 'Envío a todo el país'));
+                }
+            }
+
+            if (itemSucursal) {
+                lineas.push(buildLineaProducto(SVG_CAMION, 'Envío a todo el país'));
+            }
+
+            if (itemMagi) {
+                lineas.push(buildLineaProducto(SVG_TIENDA, '<b>Retiro gratis</b> en Tienda'));
+            }
+
+            return '<div style="font-family:Arial,sans-serif;max-width:320px;padding:8px 0;">'
+                 + '<div style="display:flex;flex-direction:column;gap:5px;">'
+                 + lineas.join('')
+                 + '</div></div>';
+        };
+
+        // ─── Lógica principal ──────────────────────────────────────────────
+
         var cp       = getCep(options);
         var zonaAMBA = esAMBA(cp);
-        console.log('[envio] CEP recibido:', cp, '| esZonaAMBA:', zonaAMBA);
+        var esProducto = window.location.pathname.indexOf('/productos/') !== -1;
+        console.log('[envio] CEP recibido:', cp, '| esZonaAMBA:', zonaAMBA, '| esProducto:', esProducto);
 
         var clone = response.clone();
         return clone.json().then(function(data) {
@@ -238,12 +311,10 @@ var responseHandlers = {
                     var label = item.querySelector('label.js-shipping-radio');
                     return label && label.getAttribute('data-shipping-type') === 'delivery';
                 });
-
                 var retirosSucursal = allItems.filter(function(item) {
                     var label = item.querySelector('label.js-shipping-radio');
                     return label && label.getAttribute('data-shipping-type') === 'pickup' && !esMagi(item);
                 });
-
                 var itemMagi = zonaAMBA
                     ? allItems.find(function(item) {
                         var label = item.querySelector('label.js-shipping-radio');
@@ -255,25 +326,29 @@ var responseHandlers = {
                 var itemSucursal  = getMejorItem(retirosSucursal);
 
                 if (itemDomicilio || itemSucursal || itemMagi) {
-                    // Extraer inputs hidden del HTML original
-                    var hiddenInputs = '';
-                    var parser2 = new DOMParser();
-                    var docOrig  = parser2.parseFromString(data.html, 'text/html');
-                    docOrig.querySelectorAll('input[type="hidden"]').forEach(function(inp) {
-                        hiddenInputs += inp.outerHTML;
-                    });
 
-                    var htmlFinal = '<div class="full-width-container m-bottom">'
-                        + '<ul class="list-unstyled box-container radio-button-container m-bottom-half">';
+                    if (esProducto) {
+                        // ── Formato producto: HTML estático con íconos ──
+                        data.html = buildHtmlProducto(itemDomicilio, itemSucursal, itemMagi);
 
-                    if (itemDomicilio) htmlFinal += buildItemHtml(itemDomicilio, 'delivery',        true);
-                    if (itemSucursal)  htmlFinal += buildItemHtml(itemSucursal,  'pickup-sucursal', false);
-                    if (itemMagi)      htmlFinal += buildItemHtml(itemMagi,      'pickup-magi',     false);
+                    } else {
+                        // ── Formato estándar: lista de opciones seleccionables ──
+                        var hiddenInputs = '';
+                        var docOrig = (new DOMParser()).parseFromString(data.html, 'text/html');
+                        docOrig.querySelectorAll('input[type="hidden"]').forEach(function(inp) {
+                            hiddenInputs += inp.outerHTML;
+                        });
 
-                    htmlFinal += '</ul></div>'
-                            + hiddenInputs; // ← después del div, igual que en el original
+                        var htmlFinal = '<div class="full-width-container m-bottom">'
+                            + '<ul class="list-unstyled box-container radio-button-container m-bottom-half">';
 
-                    data.html = htmlFinal;
+                        if (itemDomicilio) htmlFinal += buildItemHtml(itemDomicilio, 'delivery',        true);
+                        if (itemSucursal)  htmlFinal += buildItemHtml(itemSucursal,  'pickup-sucursal', false);
+                        if (itemMagi)      htmlFinal += buildItemHtml(itemMagi,      'pickup-magi',     false);
+
+                        htmlFinal += '</ul></div>' + hiddenInputs;
+                        data.html = htmlFinal;
+                    }
                 }
             }
 
