@@ -96,6 +96,19 @@ var responseHandlers = {
         };
 
         var normalizarFecha = function(textoFecha) {
+            var formatToday = function formatearTextoEntrega(texto) {
+                const fechaActual = new Date();
+                        
+                // Obtiene día y mes con dos dígitos
+                const dia = String(fechaActual.getDate()).padStart(2, '0');
+                const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                const fechaFormateada = `${dia}/${mes}`;
+                        
+                // Reemplaza "hoy" por "hoy [fecha]" de forma insensible a mayúsculas
+                return texto.replace(/hoy/i, `hoy ${fechaFormateada}`);
+            }
+
+            textoFecha = formatToday(textoFecha);
             var reDate = /(\d{1,2})\/(\d{2})/g;
             var fechas = [];
             var match;
@@ -103,47 +116,81 @@ var responseHandlers = {
                 fechas.push({ dia: parseInt(match[1], 10), mes: parseInt(match[2], 10) });
             }
             if (fechas.length === 0) return textoFecha;
-
-            var ahora       = new Date();
-            var hora        = ahora.getHours();
-            var diaSem      = ahora.getDay();
-            var esHabil     = diaSem >= 1 && diaSem <= 5;
-            var superaCorte = esHabil && hora >= 13;
-            var hoy         = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-
-            var toDate = function(f) {
+            
+            var ahora = new Date();
+            var hora = ahora.getHours();
+            var diaSem = ahora.getDay();
+            var esHabil = diaSem >= 1 && diaSem <= 5;
+            var corteHora = 13;
+            var superaCorte = esHabil && hora >= corteHora;
+            
+            // Inicio del día de hoy en hora local (00:00:00)
+            var medianocheHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+            
+            var toLocalDate = function(f) {
                 return new Date(ahora.getFullYear(), f.mes - 1, f.dia);
             };
-            var diffDias = function(d) {
-                return Math.round((d - hoy) / 86400000);
+            
+            var diffDias = function(localDate) {
+                return Math.floor((localDate - medianocheHoy) / 86400000);
             };
-            var nombreDia = function(d) {
-                return ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][d.getDay()];
+            
+            var nombreDia = function(localDate) {
+                return ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"][localDate.getDay()];
             };
+            
             var labelDia = function(f) {
-                var d            = toDate(f);
-                var diff         = diffDias(d);
-                var efectivoDiff = superaCorte ? diff - 1 : diff;
-                if (efectivoDiff <= 0) return "hoy";
-                if (efectivoDiff === 1) return "mañana";
-                var nombre = nombreDia(d);
-                if (diff <= 8) return "el " + nombre;
+                var localD = toLocalDate(f);
+                var diff = diffDias(localD);
+                if (diff === 0 && superaCorte) return "mañana";
+                if (diff === 0) return "hoy";
+                if (diff === 1) return "mañana";
+                var nombre = nombreDia(localD);
+                if (diff <= 8 && diff > 1) return "el " + nombre;
                 return "el " + nombre + " " + f.dia + "/" + (f.mes < 10 ? "0" + f.mes : f.mes);
             };
+            var hasHoy = /\bhoy\b/i.test(textoFecha);
+            var isBetweenPhrase = /\bentre\b/i.test(textoFecha);
 
             if (fechas.length === 1) {
+                var diffF = diffDias(toLocalDate(fechas[0]));
                 var l = labelDia(fechas[0]);
-                return textoFecha
-                    .replace(/el [^\d\/\s,]+ \d{1,2}\/\d{2}/, l)
-                    .replace(/\d{1,2}\/\d{2}/, l);
+                if (hasHoy && isBetweenPhrase) {
+                    // La fecha extraída es el extremo final de "entre hoy y X"
+                    // Si esa fecha es hoy, el extremo final efectivo es mañana
+                    if (superaCorte) return "mañana";
+                    if (diffF === 0) return "entre hoy y mañana";
+                    return "entre hoy y " + l;
+                }
+                return l;
             }
+
             if (fechas.length === 2) {
+                var local1 = toLocalDate(fechas[0]);
+                var local2 = toLocalDate(fechas[1]);
+                var diff1 = diffDias(local1);
+                var diff2 = diffDias(local2);
+                var ambasHoy = (diff1 === 0 && diff2 === 0);
+                var diff2Efectivo = ambasHoy ? 1 : diff2;
                 var l1 = labelDia(fechas[0]);
-                var l2 = labelDia(fechas[1]);
-                return textoFecha.replace(
-                    /entre el [^\d\/\s,]+ \d{1,2}\/\d{2} y el [^\d\/\s,]+ \d{1,2}\/\d{2}/,
-                    'entre ' + l1 + ' y ' + l2
-                );
+                var l2 = ambasHoy ? "mañana" : labelDia(fechas[1]);
+                if (superaCorte) {
+                    if (diff1 === 0) return "mañana";
+                    var efectivoDesdeDiff = diff1 + 1;
+                    var efectivoHastaDiff = diff2Efectivo + 1;
+                    if (efectivoDesdeDiff === efectivoHastaDiff || l1 === l2) {
+                        return (efectivoDesdeDiff === 1 ? "mañana" : l2);
+                    }
+                    var desdeLabel = efectivoDesdeDiff === 1 ? "mañana" : l1;
+                    var hastaLabel = efectivoHastaDiff === 1 ? "mañana" : l2;
+                    return "entre " + desdeLabel + " y " + hastaLabel;
+                }
+                if (diff1 === 0) {
+                    if (l2 === "hoy" || l1 === l2) return l2;
+                    return "entre " + l1 + " y " + l2;
+                }
+                if (l1 === l2) return l1;
+                return "entre " + l1 + " y " + l2;
             }
             return textoFecha;
         };
