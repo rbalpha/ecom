@@ -4,6 +4,250 @@ let b=document.querySelector(".row-fluid"),t=b.querySelector(".font-small"),x=b.
 
 
 (function() {
+  function limpiarPrecios() {
+    var selectores = '.js-price-display, .js-cart-subtotal, .price, .cart-total, .product-price, .js-payment-discount-price-product';
+    var elementos = document.querySelectorAll(selectores);
+    Array.from(elementos).forEach(function(el) {
+      if (el.childNodes.length === 1) {
+        var texto = el.textContent || el.innerText || '';
+        if (texto.indexOf(',00') !== -1) {
+          el.textContent = texto.replace(',00', '');
+        }
+      }
+    });
+  }
+
+  function replaceDiscountText(replacement) {
+    var selector = ".product-form-container .js-payment-discount-name-product";
+    var el = document.querySelector(selector);
+    if (!el) return false;
+    if (!el.dataset.originalText) el.dataset.originalText = (el.textContent || el.innerText || '').trim();
+    el.textContent = replacement;
+    el.classList.add("payment-discount-replaced");
+    return true;
+  }
+
+  function renderStockBadge() {
+    if (document.getElementById("mg-low-stock-alert")) return;
+    var h = document.getElementById("product-name");
+    if (!h) return;
+
+    var d = document.createElement("div");
+    d.id = "mg-low-stock-alert";
+    d.style.cssText = "display:flex;align-items:center;margin-bottom:12px";
+    d.innerHTML =
+      '<span class="mg-dot-blink"></span>' +
+      '<span style="color:#e91a1a;font-size:12px;margin-left:7px;font-weight:bold">Quedan pocas unidades</span>' +
+      '<span style="font-size:12px;margin-left:6px">- Pedi los tuyos ahora!</span>';
+
+    h.insertAdjacentElement("beforebegin", d);
+  }
+
+  function init() {
+    limpiarPrecios();
+    replaceDiscountText("Transferencia");
+    renderStockBadge();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  var tries = 0;
+  var maxTries = 50;
+  var interval = setInterval(function() {
+    tries++;
+    limpiarPrecios();
+    if (replaceDiscountText("Transferencia") || tries >= maxTries) {
+      clearInterval(interval);
+    }
+  }, 100);
+})();
+
+
+(function() {
+  // 1. Lógica para agregar fechas a reviews de Wigy
+  var observerReviews = new MutationObserver(function() {
+    var cards = document.querySelectorAll('.wigy-reviews-review-card:not([data-dated])');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      var d = c.getAttribute('data-date');
+      var header = c.querySelector('.wigy-reviews-review-header-row');
+
+      if (d && header) {
+        var dateObj = new Date(d);
+        var day = ("0" + dateObj.getDate()).slice(-2);
+        var month = ("0" + (dateObj.getMonth() + 1)).slice(-2);
+        var year = dateObj.getFullYear();
+        var dateFormatted = day + "/" + month + "/" + year;
+
+        var s = document.createElement('div');
+        s.textContent = dateFormatted;
+        s.setAttribute('style', "font-size:11px;color:gray;flex-basis:100%;margin-top:2px;line-height:1.2");
+
+        header.appendChild(s);
+        header.style.flexWrap = "wrap";
+        c.setAttribute('data-dated', '1');
+      }
+    }
+  });
+
+  observerReviews.observe(document.body, { childList: true, subtree: true });
+
+  // 2. Lógica para el Badge de Reseñas
+  var createBadge = function() {
+    var b = document.createElement("div");
+    b.style.display = "flex";
+    b.style.alignItems = "center";
+    b.style.marginTop = "12px";
+
+    var s = document.createElement("span");
+    s.textContent = "★★★★★";
+    s.style.color = "#f5b301";
+    s.style.fontSize = "14px";
+    s.style.letterSpacing = "1px";
+    s.style.marginRight = "9px";
+
+    var x = document.createElement("span");
+    x.innerHTML = '<b>Excelente</b> <b style="margin:0 2px;">4.8</b> <span style="color:#668;margin:0 6px;">|</span><span style="color:#668;">467 Reseñas verificadas</span>';
+    x.style.fontSize = "13px";
+    x.style.color = "#333";
+
+    b.appendChild(s);
+    b.appendChild(x);
+    b.setAttribute("data-badge", "");
+    return b;
+  };
+
+  var renderBadge = function() {
+    var old = document.getElementById("wigy-rating-above-title");
+    if (old) old.parentNode.removeChild(old);
+
+    var h = document.querySelector("h1.product-name");
+    if (h && !document.querySelector("div[data-badge]")) {
+      h.parentNode.insertBefore(createBadge(), h.nextSibling);
+    }
+  };
+
+  renderBadge();
+
+  var observerBadge = new MutationObserver(function() {
+    renderBadge();
+  });
+
+  observerBadge.observe(document.body, { childList: true, subtree: true });
+  
+  
+  
+  
+ // ******* CAMBIO DE LUGAR Y REFACTOR DEL CONTENEDOR DE SHIPPING *****
+(function () {
+
+  // ─── CONFIGURACIÓN ───────────────────────────────────────────
+  var INTERVAL = 300;
+  var MAX_TIME = 20000;
+  var ESTABILIDAD_REQUERIDA = 2000; // ms sin cambios para asumir que el widget terminó
+  var GUARDIA_TIEMPO = 5000;        // ms que el observer final sigue vigilando por si acaso
+  // ─────────────────────────────────────────────────────────────
+
+
+  // ─── MODIFICACIONES AL SHIPPING CONTAINER ────────────────────
+  function modificarShippingContainer(shippingContainer) {
+
+    // Agregá tus modificaciones acá:
+
+  }
+  // ─────────────────────────────────────────────────────────────
+
+
+  // ─── LÓGICA PRINCIPAL ─────────────────────────────────────────
+  var elapsed = 0;
+  var ultimoCambio = Date.now();
+
+  var waitTimer = setInterval(function () {
+    elapsed += INTERVAL;
+
+    var shippingContainer = document.getElementById('product-shipping-container');
+    var bundleBoton = document.querySelector('.bundle-cantidad-boton');
+
+    if (shippingContainer && bundleBoton) {
+      clearInterval(waitTimer);
+      esperarEstabilidad(shippingContainer, bundleBoton);
+    }
+
+    if (elapsed >= MAX_TIME) {
+      clearInterval(waitTimer);
+    }
+
+  }, INTERVAL);
+
+
+  function moverYModificar() {
+    var sc = document.getElementById('product-shipping-container');
+    var bb = document.querySelector('.bundle-cantidad-boton');
+
+    if (sc && bb && bb.previousElementSibling !== sc) {
+      bb.parentNode.insertBefore(sc, bb);
+      modificarShippingContainer(sc);
+    }
+  }
+
+
+  function esperarEstabilidad(shippingContainer, bundleBoton) {
+    var padre = bundleBoton.parentNode;
+
+    var observer = new MutationObserver(function () {
+      ultimoCambio = Date.now();
+    });
+
+    observer.observe(padre, { childList: true, subtree: true });
+
+    var estabilidadTimer = setInterval(function () {
+      var tiempoSinCambios = Date.now() - ultimoCambio;
+
+      if (tiempoSinCambios >= ESTABILIDAD_REQUERIDA) {
+        clearInterval(estabilidadTimer);
+        observer.disconnect();
+
+        // Widget terminó, movemos y modificamos
+        moverYModificar();
+
+        // Observer de guardia por si el widget hace algo después
+        iniciarObserverGuardia();
+      }
+
+    }, 200);
+  }
+
+
+  function iniciarObserverGuardia() {
+    var tiempoInicio = Date.now();
+
+    var guardiaObserver = new MutationObserver(function () {
+      moverYModificar();
+
+      if (Date.now() - tiempoInicio >= GUARDIA_TIEMPO) {
+        guardiaObserver.disconnect();
+      }
+    });
+
+    guardiaObserver.observe(document.body, { childList: true, subtree: true });
+  }
+  // ─────────────────────────────────────────────────────────────
+
+})();
+
+
+})();
+  
+  
+
+
+
+
+(function() {
     window.originalFetch = window.originalFetch || window.fetch;
 
     // --- 1. TRATAMIENTOS DE REQUEST (Peticiones) ---
