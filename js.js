@@ -240,10 +240,17 @@ var responseHandlers = {
                 var fechaRaw  = getFechaDesdeDataName(item);
                 var fechaNorm = normalizarFecha(fechaRaw).replace(/^(llega|retiras|retirás)\s+/i, '');
                 if (esGratis) {
-                    textoPromesa = 'Llega <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNorm;
+                    textoPromesa = '<span style="color:#478438;font-weight:bold;">Llega gratis</span> ' + fechaNorm;
                 } else {
                     textoPromesa = 'Llega ' + fechaNorm + ' por ' + costo;
                 }
+                
+                var efectivoDiff = calcularEfectivoDiff(fechaRaw);                
+                fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+
+                var motoMensajeriaTxt = esGratis ? "por Moto - CABA" : "(Moto - CABA)";
+                textoPromesa = textoPromesa + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+
                 innerHtml = '<div class="shipping-method-name m-bottom-quarter" data-component="option.name">'
                           + textoPromesa + '</div>';
             }
@@ -256,14 +263,14 @@ var responseHandlers = {
                 modalHtml = modalHtml
                     .replace(
                         /(<span[^>]*>)[\s\n]*Ver direcciones[\s\n]*(<\/span>)/,
-                        '$1sucursal cercana$2'
+                        '$1Ver sucursales$2'
                     )
                     .replace(
                         /class="(js-trigger-modal-zindex-top[^"]*)">/,
-                        'class="$1" style="text-transform:none;">'
+                        'class="$1" style="text-transform:none;font-size:13px !important">'
                     );
                 if (esGratis) {
-                    textoPromesa = 'Retirás <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNorm2;
+                    textoPromesa = '<span style="color:#478438;font-weight:bold;">Retirás gratis</span> ' + fechaNorm2;
                 } else {
                     textoPromesa = 'Retirás ' + fechaNorm2 + ' por ' + costo;
                 }
@@ -276,7 +283,7 @@ var responseHandlers = {
                 var dataName    = input.getAttribute('data-name') || "";
                 var barrioMatch = dataName.match(/Magi - ([^-]+?)\s*\(CABA\)/i);
                 var barrio      = barrioMatch ? barrioMatch[1].trim() : 'nuestra oficina';
-                textoPromesa = 'Retirá <span style="color:#2ea44f;font-weight:bold;">gratis</span> en '
+                textoPromesa = '<span style="color:#478438;font-weight:bold;">Retirá gratis</span> en '
                              + barrio + ' (lunes a viernes 9-18hs)';
                 innerHtml = '<div class="shipping-method-name m-bottom-quarter" data-component="option.name">'
                           + textoPromesa + '</div>';
@@ -287,14 +294,14 @@ var responseHandlers = {
 
         // ─── Renderer formato PRODUCTO (/productos/) ───────────────────────
 
-        var SVG_RAYO = '<svg width="17" height="17" viewBox="25 5 55 88" fill="none" style="color:#2e7d32;">'
+        var SVG_RAYO = '<svg width="17" height="17" viewBox="25 5 55 88" fill="none" style="color:#478438;">'
                      + '<path d="M65 10L30 55H50L35 90L75 40H55L65 10Z" stroke="currentColor" stroke-width="5" '
                      + 'stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
 
-        var SVG_CAMION = '<svg width="20" height="16" viewBox="0 0 640 512" style="color:#2e7d32;">'
+        var SVG_CAMION = '<svg width="20" height="16" viewBox="0 0 640 512" style="color:#478438;">'
                        + '<path d="M615.11,238.15l-51.78-77.69a50.61,50.61,0,0,0-42.11-22.53H454.94V87.33a50.61,50.61,0,0,0-50.6-50.61H67a50.6,50.6,0,0,0-50.6,50.61V357.2A50.6,50.6,0,0,0,67,407.81H85.55a84.35,84.35,0,0,0,165.29,0H355.43a84.35,84.35,0,0,0,165.29,0H573a50.6,50.6,0,0,0,50.6-50.61v-91A50.58,50.58,0,0,0,615.11,238.15ZM454.94,171.66h66.28a16.85,16.85,0,0,1,14,7.51l40,60H454.94ZM168.19,441.54a50.6,50.6,0,1,1,50.61-50.6A50.61,50.61,0,0,1,168.19,441.54Zm187.24-67.47H250.84a84.35,84.35,0,0,0-165.29,0H67A16.87,16.87,0,0,1,50.12,357.2V87.33A16.87,16.87,0,0,1,67,70.46H404.34A16.86,16.86,0,0,1,421.2,87.33v221A84.43,84.43,0,0,0,355.43,374.07Zm82.64,67.47a50.6,50.6,0,1,1,50.6-50.6A50.61,50.61,0,0,1,438.07,441.54ZM589.88,357.2A16.87,16.87,0,0,1,573,374.07H520.72a84.45,84.45,0,0,0-65.78-65.78V272.87H589.88Z" fill="currentColor"/></svg>';
 
-        var SVG_TIENDA = '<svg width="18" height="16" viewBox="0 0 640 512" fill="#2e7d32">'
+        var SVG_TIENDA = '<svg width="18" height="16" viewBox="0 0 640 512" fill="#478438">'
                        + '<path d="M635.7 176.1l-91.4-160C538.6 6.2 528 0 516.5 0h-393C112 0 101.4 6.2 95.7 16.1l-91.4 160'
                        + 'C-7.9 197.5 7.4 224 32 224h32v254.5C64 497 78.3 512 96 512h256c17.7 0 32-15 32-33.5V224h160v280'
                        + 'c0 4.4 3.6 8 8 8h16c4.4 0 8-3.6 8-8V224h32c24.6 0 39.9-26.5 27.7-47.9z'
@@ -302,13 +309,15 @@ var responseHandlers = {
                        + 'M32.1 192l91.4-160h393L608 192H32.1z"/></svg>';
 
         var buildLineaProducto = function(svg, texto) {
-            return '<span style="display:grid;grid-template-columns:20px 1fr;align-items:center;'
-                 + 'gap:6px;font-size:13.5px;color:#2e7d32;line-height:1.2;">'
-                 + '<span style="display:flex;align-items:center;justify-content:flex-start;width:20px;">'
+            return '<span style="display:grid;grid-template-columns:22px 1fr;align-items:start;'
+                 + 'gap:8px;font-size:14px;color:#478438;line-height:1.4;margin-bottom:12px;font-family:inherit;">'
+                 + '<span style="display:flex;align-items:center;justify-content:flex-start;width:22px;padding-top:2px;">'
                  + svg
                  + '</span>'
-                 + '<span>' + texto + '</span>'
+                 + '<span style="display:inline-block; width:100%; white-space:normal;">' + texto + '</span>'
                  + '</span>';
+
+
         };
 
         var buildHtmlProducto = function(itemDomicilio, itemSucursal, itemMagi) {
@@ -321,11 +330,17 @@ var responseHandlers = {
                 var costo    = formatCosto(costRaw);
                 var fechaRaw = getFechaDesdeDataName(itemDomicilio);
                 var fechaNorm = normalizarFecha(fechaRaw).replace(/^(llega|retiras|retirás)\s+/i, '');
-                var textoDom = esGratis
-                    ? 'Llega <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNorm
-                    : 'Llega ' + fechaNorm + ' por ' + costo;
-        
                 var efectivoDiff = calcularEfectivoDiff(fechaRaw);
+                
+                fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+
+                var textoDom = esGratis
+                    ? '<span style="color:#478438;font-weight:bold;">Llega gratis</span> ' + fechaNorm
+                    : 'Llega ' + fechaNorm + ' por ' + costo;
+                
+                var motoMensajeriaTxt = esGratis ? "por Moto - CABA" : "(Moto - CABA)";
+                textoDom = textoDom + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+        
                 var svgDom = efectivoDiff <= 1 ? SVG_RAYO : SVG_CAMION;
                 lineas.push(buildLineaProducto(svgDom, textoDom));
             }
@@ -337,15 +352,37 @@ var responseHandlers = {
                 var costoS    = formatCosto(costRawS);
                 var fechaRawS  = getFechaDesdeDataName(itemSucursal);
                 var fechaNormS = normalizarFecha(fechaRawS).replace(/^(retiras|retirás)\s+/i, '');
+
+                /*
                 var aTag       = itemSucursal.querySelector('a[data-toggle="modal"]');
                 var modalHref  = aTag ? aTag.getAttribute('href') : '#';
                 var linkSuc    = '<a href="' + modalHref + '" data-toggle="modal" '
                                + 'class="js-trigger-modal-zindex-top btn-link btn-block" '
                                + 'style="text-transform:none;color:#2e7d32;">sucursal cercana</a>';
+                */
+                var modalDivSuc   = itemSucursal.querySelector('.js-shipping-suboption');
+                var modalHtmlSuc  = modalDivSuc ? modalDivSuc.outerHTML : '';
+                modalHtmlSuc = modalHtmlSuc
+                    .replace(
+                        /(<span[^>]*>)[\s\n]*Ver direcciones[\s\n]*(<\/span>)/,
+                        '$1Ver sucursales$2'
+                    )
+                    .replace(
+                        /class="(js-trigger-modal-zindex-top[^"]*)">/,
+                        'class="$1" style="text-transform:none;font-size:12px !important; margin-top: 1px">'
+                    );
+
+
+
+
+
                 var textoSuc = esGratisS
-                    ? 'Retirás <span style="color:#2ea44f;font-weight:bold;">gratis</span> ' + fechaNormS + ' en ' + linkSuc
-                    : 'Retirás ' + fechaNormS + ' por ' + costoS + ' en ' + linkSuc;
-                lineas.push(buildLineaProducto(SVG_CAMION, textoSuc));
+//                    ? 'Retirás <span style="color:#478438;font-weight:bold;">gratis</span> ' + fechaNormS + ' en ' + linkSuc
+//                    : 'Retirás ' + fechaNormS + ' por ' + costoS + ' en ' + linkSuc;
+                    ? '<span style="color:#478438;font-weight:bold;">Retirás gratis</span> ' + fechaNormS
+                    : 'Retirás ' + fechaNormS + ' por ' + costoS;
+
+                lineas.push(buildLineaProducto(SVG_CAMION, textoSuc + modalHtmlSuc));
             }
         
             if (itemMagi) {
@@ -353,7 +390,7 @@ var responseHandlers = {
                 var dataName    = inputM.getAttribute('data-name') || "";
                 var barrioMatch = dataName.match(/Magi - ([^-]+?)\s*\(CABA\)/i);
                 var barrio      = barrioMatch ? barrioMatch[1].trim() : 'nuestra oficina';
-                var textoMagi   = 'Retirá <span style="color:#2ea44f;font-weight:bold;">gratis</span> en '
+                var textoMagi   = '<span style="color:#478438;font-weight:bold;">Retirá gratis</span> en '
                                 + barrio + ' (lunes a viernes 9-18hs)';
                 lineas.push(buildLineaProducto(SVG_TIENDA, textoMagi));
             }
@@ -370,7 +407,7 @@ var responseHandlers = {
         var cp       = getCep(options);
         var zonaAMBA = esAMBA(cp);
         var esProducto = window.location.pathname.indexOf('/productos/') !== -1;
-        console.log('[envio] CEP recibido:', cp, '| esZonaAMBA:', zonaAMBA, '| esProducto:', esProducto);
+        //console.log('[envio] CEP recibido:', cp, '| esZonaAMBA:', zonaAMBA, '| esProducto:', esProducto);
 
         var clone = response.clone();
         return clone.json().then(function(data) {
