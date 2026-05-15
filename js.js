@@ -81,7 +81,7 @@ var responseHandlers = {
             return parts.length > 1 ? parts[parts.length - 1].trim() : "";
         };
 
-        var calcularEfectivoDiff = function(textoFecha) {
+/*        var calcularEfectivoDiff = function(textoFecha) {
             var match = textoFecha.match(/(\d{1,2})\/(\d{2})/);
             if (!match) return Infinity;
             var ahora       = new Date();
@@ -94,7 +94,7 @@ var responseHandlers = {
             var diff        = Math.round((d - hoy) / 86400000);
             return superaCorte ? diff - 1 : diff;
         };
-
+*/
         var normalizarFecha = function(textoFecha) {
             var formatToday = function formatearTextoEntrega(texto) {
                 const fechaActual = new Date();
@@ -245,11 +245,12 @@ var responseHandlers = {
                     textoPromesa = 'Llega ' + fechaNorm + ' por ' + costo;
                 }
                 
-                var efectivoDiff = calcularEfectivoDiff(fechaRaw);                
-                fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+                //var efectivoDiff = calcularEfectivoDiff(fechaRaw);                
+                //fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+                fechaNorm = /hoy|mañana/i.test(fechaNorm) ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
 
-                var motoMensajeriaTxt = esGratis ? "por Moto - CABA" : "(Moto - CABA)";
-                textoPromesa = textoPromesa + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+                //textoPromesa = textoPromesa + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+                textoPromesa = textoPromesa + " " + (/hoy|mañana/i.test(fechaNorm) ? "<div>(Moto - CABA)</div>" : "");
 
                 innerHtml = '<div class="shipping-method-name m-bottom-quarter" data-component="option.name">'
                           + textoPromesa + '</div>';
@@ -330,18 +331,19 @@ var responseHandlers = {
                 var costo    = formatCosto(costRaw);
                 var fechaRaw = getFechaDesdeDataName(itemDomicilio);
                 var fechaNorm = normalizarFecha(fechaRaw).replace(/^(llega|retiras|retirás)\s+/i, '');
-                var efectivoDiff = calcularEfectivoDiff(fechaRaw);
+                //var efectivoDiff = calcularEfectivoDiff(fechaRaw);
                 
-                fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+                //fechaNorm = efectivoDiff <= 1 ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
+                fechaNorm = /hoy|mañana/i.test(fechaNorm) ? '<span style="color:#478438;font-weight:bold;">' + fechaNorm + '</span> ' : fechaNorm;
 
                 var textoDom = esGratis
                     ? '<span style="color:#478438;font-weight:bold;">Llega gratis</span> ' + fechaNorm
                     : 'Llega ' + fechaNorm + ' por ' + costo;
                 
-                var motoMensajeriaTxt = esGratis ? "por Moto - CABA" : "(Moto - CABA)";
-                textoDom = textoDom + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+                //textoDom = textoDom + " " + (efectivoDiff <= 1 ? motoMensajeriaTxt : "");
+                textoDom = textoDom + " " + (/hoy|mañana/i.test(fechaNorm) ? "<div>(Moto - CABA)</div>" : "");
         
-                var svgDom = efectivoDiff <= 1 ? SVG_RAYO : SVG_CAMION;
+                var svgDom = /hoy|mañana/i.test(fechaNorm) ? SVG_RAYO : SVG_CAMION;
                 lineas.push(buildLineaProducto(svgDom, textoDom));
             }
         
